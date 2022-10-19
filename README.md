@@ -9,3 +9,8 @@ Drawn using: https://github.com/anvaka/ngraph.pixel
 Nodes are AS Numbers, edges are from announced PATH.
 
 Prefix are still ignored, not drawn. No withdrawals.
+
+```
+npm install
+npm run bundle
+```
