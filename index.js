@@ -16,17 +16,21 @@ function getLinkId(fromId, toId) {
   return fromId.toString() + '👉 ' + toId.toString();
 }
 
-function renderNode(/* node */) {
+function renderNode(n) {
+  let nSize = 5;
+  if(n && n.links && n.links.length) {
+  	nSize  = n.links.length;
+  }
   return {
     color: Math.random() * 0xFFFFFF | 0,
-    size: Math.random() * 21 + 10
+    size:  nSize
   };
 }
 
-function renderLink(/* link */) {
+function renderLink(l) {
   return {
     fromColor: 0xFF0000,
-    toColor: 0x00FF00
+    toColor: 0x0000FF
   };
 }
 let ws = new WebSocket("wss://ris-live.ripe.net/v1/ws/?client=js-example-1");
@@ -53,18 +57,19 @@ function extendingPath(path){
 function addNewLink(from, to){
     const linkId = getLinkId(from, to);
 
-    asns.add(to);
-    asns.add(from);
-
+	if(!asns.has(from)){
+		asns.add(from);
+    	graph.addNode(from);
+	}
+	if(!asns.has(to)){
+		asns.add(to);
+    	graph.addNode(to);
+	}
 	if(!links.has(linkId)){
 		links.add(linkId);
 		graph.addLink(from, to);
-	} else {
-        let nodeUI = renderer.getNode(from);
-        nodeUI.size = nodeUI.size + 1;
-		nodeUI = renderer.getNode(to);
-		nodeUI.size = nodeUI.size + 1;	
-	}
+
+	} 
 }
 ws.onmessage = function(event) {
     const message = JSON.parse(event.data);
@@ -84,6 +89,7 @@ ws.onmessage = function(event) {
 };
 
 ws.onopen = function() {
+	graph.removeNode(0);
     ws.send(JSON.stringify({
         type: "ris_subscribe",
         data: params
