@@ -6,9 +6,22 @@ const links = new Set();
 
 addNewLink(3356, 1299);
 
-const renderer = renderGraph(graph, {
+const physicsSettings = {
+  springLength: 30,
+  springCoeff: 0.00001,
+  gravity: -10.2,
+  timeStep: 20,
+};
+
+
+const graphContainer = document.getElementById('graph-container');
+
+const renderer = renderGraph(graph, 
+{
+    container: graphContainer,
+    physics: physicsSettings,
     link: renderLink,
-    node: renderNode
+    node: renderNode,
 });
 
 // From ngraph.graph code
@@ -19,7 +32,7 @@ function getLinkId(fromId, toId) {
 function renderNode(n) {
   let nSize = 5;
   if(n && n.links && n.links.length) {
-  	nSize  = n.links.length;
+      nSize  = n.links.length;
   }
   return {
     color: Math.random() * 0xFFFFFF | 0,
@@ -45,10 +58,10 @@ let params = {
 
 
 function extendingPath(path){
-	for(const element of path) {
+    for(const element of path) {
         if (asns.has(element)) return true;
-	}
-	return false;
+    }
+    return false;
 }
 
 
@@ -57,19 +70,19 @@ function extendingPath(path){
 function addNewLink(from, to){
     const linkId = getLinkId(from, to);
 
-	if(!asns.has(from)){
-		asns.add(from);
-    	graph.addNode(from);
-	}
-	if(!asns.has(to)){
-		asns.add(to);
-    	graph.addNode(to);
-	}
-	if(!links.has(linkId)){
-		links.add(linkId);
-		graph.addLink(from, to);
+    if(!asns.has(from)){
+        asns.add(from);
+        graph.addNode(from);
+    }
+    if(!asns.has(to)){
+        asns.add(to);
+        graph.addNode(to);
+    }
+    if(!links.has(linkId)){
+        links.add(linkId);
+        graph.addLink(from, to);
 
-	} 
+    } 
 }
 ws.onmessage = function(event) {
     const message = JSON.parse(event.data);
@@ -89,7 +102,7 @@ ws.onmessage = function(event) {
 };
 
 ws.onopen = function() {
-	graph.removeNode(0);
+    graph.removeNode(0);
     ws.send(JSON.stringify({
         type: "ris_subscribe",
         data: params
