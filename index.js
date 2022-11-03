@@ -3,6 +3,7 @@ const renderGraph = require('ngraph.pixel');
 
 const asns = new Set();
 const links = new Set();
+let topAsns = new Map();
 
 addNewLink(3356, 1299);
 
@@ -65,6 +66,24 @@ function extendingPath(path){
 }
 
 
+function updateTopTwenty(nId){
+
+	let n = graph.getNode(nId);
+	let nDegree = 0
+	if(n.links && n.links.length) nDegree = n.links.length;
+
+	if(topAsns.size < 20 || topAsns.has(nId)){
+		topAsns.set(nId, nDegree);
+	} else 
+	{
+		topAsns.set(nId, nDegree);
+		let sorted = [...topAsns].sort((a,b) => {return b[1] - a[1]});
+		sorted.pop();
+		topAsns = new Map(sorted);
+	}
+	console.log(topAsns);
+}
+
 // If node is there, increase from/to node size
 // No idea how to do multi graph, or change link size
 function addNewLink(from, to){
@@ -83,6 +102,8 @@ function addNewLink(from, to){
         graph.addLink(from, to);
 
     } 
+	updateTopTwenty(from);
+	updateTopTwenty(to);
 }
 ws.onmessage = function(event) {
     const message = JSON.parse(event.data);
