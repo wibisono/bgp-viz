@@ -14,17 +14,15 @@ const physicsSettings = {
   timeStep: 20,
 };
 
-
+$(document).ready(function() {
 const graphContainer = document.getElementById('graph-container');
-
-const renderer = renderGraph(graph, 
-{
-    container: graphContainer,
-    physics: physicsSettings,
-    link: renderLink,
-    node: renderNode,
+const renderer = renderGraph(graph, {
+        container: graphContainer,
+        physics: physicsSettings,
+        link: renderLink,
+        node: renderNode,
+    });
 });
-
 // From ngraph.graph code
 function getLinkId(fromId, toId) {
   return fromId.toString() + '👉 ' + toId.toString();
@@ -68,20 +66,42 @@ function extendingPath(path){
 
 function updateTopTwenty(nId){
 
-	let n = graph.getNode(nId);
-	let nDegree = 0
-	if(n.links && n.links.length) nDegree = n.links.length;
+    let n = graph.getNode(nId);
+    let nDegree = 0
+    if(n.links && n.links.length) nDegree = n.links.length;
 
-	if(topAsns.size < 20 || topAsns.has(nId)){
-		topAsns.set(nId, nDegree);
-	} else 
-	{
-		topAsns.set(nId, nDegree);
-		let sorted = [...topAsns].sort((a,b) => {return b[1] - a[1]});
-		sorted.pop();
-		topAsns = new Map(sorted);
-	}
-	console.log(topAsns);
+    if(topAsns.size < 20 || topAsns.has(nId)){
+        topAsns.set(nId, nDegree);
+    } else 
+    {
+        topAsns.set(nId, nDegree);
+        let sorted = [...topAsns].sort((a,b) => {return b[1] - a[1]});
+        sorted.pop();
+        topAsns = new Map(sorted);
+    }
+}
+
+
+function update_table(){
+    $("#as_table").empty();
+    var content = `
+        <table id="as_table" class="table table-striped table-sm">
+          <thead>
+            <tr>
+              <th >#</th>
+              <th >ASN</th>
+              <th >Links Count</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+    var idx = 1;
+    topAsns.forEach((v, k) => {
+        content += '<tr><td>' + idx + '</td><td>' + k + '</td> <td>' + v + '</td></tr>';
+        idx += 1;
+    });
+    content += "</tbody></table>";
+    $("#as_table").append(content);
 }
 
 // If node is there, increase from/to node size
@@ -102,8 +122,8 @@ function addNewLink(from, to){
         graph.addLink(from, to);
 
     } 
-	updateTopTwenty(from);
-	updateTopTwenty(to);
+    updateTopTwenty(from);
+    updateTopTwenty(to);
 }
 ws.onmessage = function(event) {
     const message = JSON.parse(event.data);
@@ -119,6 +139,7 @@ ws.onmessage = function(event) {
                 }
             }
         }
+        update_table();
     }
 };
 
