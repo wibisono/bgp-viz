@@ -4,14 +4,26 @@ const renderGraph = require('ngraph.pixel');
 
 const asns = new Set();
 const links = new Set();
+let topAsns = new Map();
 
 addNewLink(3356, 1299);
 
-const renderer = renderGraph(graph, {
-    link: renderLink,
-    node: renderNode
-});
+const physicsSettings = {
+  springLength: 30,
+  springCoeff: 0.00001,
+  gravity: -10.2,
+  timeStep: 20,
+};
 
+$(document).ready(function() {
+const graphContainer = document.getElementById('graph-container');
+const renderer = renderGraph(graph, {
+        container: graphContainer,
+        physics: physicsSettings,
+        link: renderLink,
+        node: renderNode,
+    });
+});
 // From ngraph.graph code
 function getLinkId(fromId, toId) {
   return fromId.toString() + '👉 ' + toId.toString();
@@ -20,7 +32,7 @@ function getLinkId(fromId, toId) {
 function renderNode(n) {
   let nSize = 5;
   if(n && n.links && n.links.length) {
-  	nSize  = n.links.length;
+      nSize  = n.links.length;
   }
   return {
     color: Math.random() * 0xFFFFFF | 0,
@@ -46,31 +58,73 @@ let params = {
 
 
 function extendingPath(path){
-	for(const element of path) {
+    for(const element of path) {
         if (asns.has(element)) return true;
-	}
-	return false;
+    }
+    return false;
 }
 
+
+function updateTopTwenty(nId){
+
+    let n = graph.getNode(nId);
+    let nDegree = 0
+    if(n.links && n.links.length) nDegree = n.links.length;
+
+    if(topAsns.size < 20 || topAsns.has(nId)){
+        topAsns.set(nId, nDegree);
+    } else 
+    {
+        topAsns.set(nId, nDegree);
+        let sorted = [...topAsns].sort((a,b) => {return b[1] - a[1]});
+        sorted.pop();
+        topAsns = new Map(sorted);
+    }
+}
+
+
+function update_table(){
+    $("#as_table").empty();
+    var content = `
+        <table id="as_table" class="table table-striped table-sm">
+          <thead>
+            <tr>
+              <th >#</th>
+              <th >ASN</th>
+              <th >Links Count</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+    var idx = 1;
+    topAsns.forEach((v, k) => {
+        content += '<tr><td>' + idx + '</td><td>' + k + '</td> <td>' + v + '</td></tr>';
+        idx += 1;
+    });
+    content += "</tbody></table>";
+    $("#as_table").append(content);
+}
 
 // If node is there, increase from/to node size
 // No idea how to do multi graph, or change link size
 function addNewLink(from, to){
     const linkId = getLinkId(from, to);
 
-	if(!asns.has(from)){
-		asns.add(from);
-    	graph.addNode(from);
-	}
-	if(!asns.has(to)){
-		asns.add(to);
-    	graph.addNode(to);
-	}
-	if(!links.has(linkId)){
-		links.add(linkId);
-		graph.addLink(from, to);
+    if(!asns.has(from)){
+        asns.add(from);
+        graph.addNode(from);
+    }
+    if(!asns.has(to)){
+        asns.add(to);
+        graph.addNode(to);
+    }
+    if(!links.has(linkId)){
+        links.add(linkId);
+        graph.addLink(from, to);
 
-	} 
+    } 
+    updateTopTwenty(from);
+    updateTopTwenty(to);
 }
 ws.onmessage = function(event) {
     const message = JSON.parse(event.data);
@@ -86,16 +140,18 @@ ws.onmessage = function(event) {
                 }
             }
         }
+        update_table();
     }
 };
 
 ws.onopen = function() {
-	graph.removeNode(0);
+    graph.removeNode(0);
     ws.send(JSON.stringify({
         type: "ris_subscribe",
         data: params
     }));
 };
+
 
 },{"ngraph.generators":13,"ngraph.pixel":24}],2:[function(require,module,exports){
 module.exports = function(opts) {
