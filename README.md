@@ -25,7 +25,7 @@ Serve this directory, it will start with two seed ASN with large cone from: http
 
 After a while dashboard might look like this.
 
-![image](https://user-images.githubusercontent.com/566147/201327585-7e0840fb-7c31-4b56-8785-e49ff29083e4.png)
+![image](https://user-images.githubusercontent.com/566147/201361388-2817c114-5d05-4699-9a5b-b2797b334673.png)
 
 
 * Try hard refresh if the graph is sticky and not expanding live.
