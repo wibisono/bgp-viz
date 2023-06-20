@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Visualization of fast beacon</title>
+    <title>Fast paced beacon visualization</title>
     <style>
         #network {
             width: 100%;
@@ -13,194 +13,21 @@
 </head>
 
 <body>
+	<h3> Fast paced beacon visualization </h3>
+
+	<p> Visualization of fast paced beacon, more info on <a
+	href="https://ris.ripe.net/docs/30_routing_beacons.html#special-beaconing-setups">specialized
+	beaconing setup</a> from RIPE NCC. </p>
+
+	<ul>
+		<li> Currently using the ipv4 beacon 84.205.66.0/24. Limited to maximum path length = 3 by default (or query with ?maxPathLen=N) </li>
+		<li> Announcements times at : XX:10, XX:30, XX:50, withdrawals times at : XX:00, XX:20, XX:40. </li>
+		<li> You'd likely need to wait until announcement times to see any activities (and withdrawals 10 mins later).</li>
+	</ul>
+
     <div id="network"></div>
+    <script src="fastbeacon.js"></script>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-
-            var graphData = {
-                nodes: new vis.DataSet([]),
-                edges: new vis.DataSet([]),
-            };
-
-            // Create options for the visualization
-            var options = {};
-
-            // Create a new network instance
-            var container = document.getElementById("network");
-            var network = new vis.Network(container, graphData, options);
-
-            const client = new WebSocket('wss://ris-live.ripe.net/v1/ws/?client=js-example-1');
-
-            const params = {
-                moreSpecific: true,
-                prefix: '84.205.66.0/24',
-                type: 'UPDATE',
-                socketOptions: {
-                    includeRaw: true,
-                    acknowledge: true
-                }
-            };
-
-            //  Maybe add options: 
-            // - beacons => ipv6 or ipv4.
-            // - multipath or width (createEdgeId with peer or not)
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const MAX_PATH_LEN = parseInt(urlParams.get('maxPathLen')) || 3;
-
-
-            const createEdgeId = function (cur, next, peer) {
-                return cur + "-" + next;
-            }
-
-            const renderAnnouncementPath = function (peer, path) {
-
-                var cur = "";
-
-                for (x in path) {
-                    if (cur == "") {
-                        cur = String(path[x]);
-                        continue;
-                    }
-
-                    var next = String(path[x]);
-                    if (!graphData.nodes.get(cur)) {
-                        var nodeColor = cur == path[0] ? "red" : "blue";
-                        graphData.nodes.add({
-                            id: cur,
-                            label: cur,
-                            color: nodeColor,
-                            font: {
-                                color: "#FFFFFF"
-                            }
-                        });
-                    }
-
-                    if (!graphData.nodes.get(next)) {
-                        graphData.nodes.add({
-                            id: next,
-                            label: next,
-                            color: "blue",
-                            font: {
-                                color: "#FFFFFF"
-                            }
-                        });
-                    }
-
-                    var edgeId = createEdgeId(cur, next, peer);
-
-                    if (!graphData.edges.get(edgeId)) {
-                        graphData.edges.add({
-                            id: edgeId,
-                            from: cur,
-                            to: next,
-                            width: 1,
-                            count: 1
-                        });
-                        console.log("\tAdded edge: ", cur, next);
-                    } else {
-                        var curEdge = graphData.edges.get(edgeId);
-                        var curCount = curEdge.count + 1;
-                        var curWidth = curCount < 15 ? curCount : 15;
-                        graphData.edges.update({
-                            id: edgeId,
-                            from: cur,
-                            to: next,
-                            width: curWidth,
-                            count: curCount
-                        });
-                    }
-                    cur = next;
-                }
-            }
-
-            const removeWithdrawnPath = function (peer, path) {
-
-                var cur = "";
-                for (x in path) {
-                    if (cur == "") {
-                        cur = String(path[x]);
-                        continue;
-                    }
-
-
-                    var next = String(path[x]);
-                    var edgeId = createEdgeId(cur, next, peer);
-                    var curEdge = graphData.edges.get(edgeId);
-                    if (curEdge.count > 1) {
-                        var curCount = curEdge.count - 1;
-                        var curWidth = curCount >= 15 ? 15 : curCount;
-                        graphData.edges.update({
-                            id: edgeId,
-                            from: cur,
-                            to: next,
-                            width: curWidth,
-                            count: curCount
-                        });
-                        console.log("\tDecrease edge width ", cur, next, curEdge.width);
-                    } else {
-                        var removed = graphData.edges.remove(edgeId);
-                        console.log("\tRemove edge ", cur, next, removed);
-                    }
-                    if (network.getConnectedEdges(cur).length == 0) {
-                        graphData.nodes.remove(cur);
-                    }
-                    cur = next;
-                }
-                if (network.getConnectedEdges(cur).length == 0) {
-                    graphData.nodes.remove(cur);
-                }
-                console.log("Withdrawn", path);
-
-            }
-
-            const peerAsnState = {};
-            client.onopen = function () {
-                client.send(JSON.stringify({
-                    type: 'ris_subscribe',
-                    data: params
-                }));
-            };
-
-            client.onmessage = function (message) {
-
-                const msg = JSON.parse(message.data).data;
-                const curPeerAsn = msg.peer_asn;
-
-                if (msg.announcements.length > 0) {
-
-                    var curPath = msg.path;
-
-                    if (curPath.length <= MAX_PATH_LEN) {
-
-                        if (curPeerAsn in peerAsnState) {
-                            removeWithdrawnPath(curPeerAsn, peerAsnState[curPeerAsn]);
-                            peerAsnState[curPeerAsn] = curPath;
-                            console.log('Replace path for peer: ', curPeerAsn, curPath);
-                        } else {
-                            peerAsnState[curPeerAsn] = curPath;
-                            console.log('New Path: ', curPeerAsn, curPath);
-                        }
-
-                        renderAnnouncementPath(curPeerAsn, curPath);
-                    }
-
-                } else if (msg.withdrawals.length > 0) {
-
-                    if (curPeerAsn in peerAsnState) {
-
-                        var curPath = peerAsnState[curPeerAsn];
-                        console.log('Withdraw paths of : ', curPeerAsn, curPath);
-                        removeWithdrawnPath(curPeerAsn, curPath);
-
-                        delete peerAsnState[curPeerAsn];
-                    }
-                }
-            };
-
-        });
-    </script>
 </body>
 
 </html>
